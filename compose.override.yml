@@ -1,35 +1,35 @@
 # Homeserver: Traefik + Cloudflare Tunnel (HTTP) e LiveKit com portas no host (UDP/TCP).
-# Configs e dados ficam fora do clone do Portainer: /home/colucci/stoat/{config,data}
+# Configs e dados ficam fora do clone do Portainer: /home/shark/stoat/{config,data}
 # NÃO rode generate_config.sh neste diretório — o script sobrescreve este arquivo.
 
 x-revolt-toml: &revolt-toml
   type: bind
-  source: /home/colucci/stoat/config/Revolt.toml
+  source: /home/shark/stoat/config/Revolt.toml
   target: /Revolt.toml
   read_only: true
 
 services:
   database:
     volumes:
-      - /home/colucci/stoat/data/db:/data/db
+      - /home/shark/stoat/data/db:/data/db
 
   rabbit:
     volumes:
-      - /home/colucci/stoat/data/rabbit:/var/lib/rabbitmq
+      - /home/shark/stoat/data/rabbit:/var/lib/rabbitmq
 
   minio:
     volumes:
-      - /home/colucci/stoat/data/minio:/data
+      - /home/shark/stoat/data/minio:/data
 
   caddy:
     ports: !reset []
     env_file:
-      - /home/colucci/stoat/config/.env.web
+      - /home/shark/stoat/config/.env.web
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - /home/colucci/stoat/data/caddy-data:/data
-      - /home/colucci/stoat/data/caddy-config:/config
-      - /home/colucci/stoat/config/stoat.json:/stoat.json:ro
+      - /home/shark/stoat/data/caddy-data:/data
+      - /home/shark/stoat/data/caddy-config:/config
+      - /home/shark/stoat/config/stoat.json:/stoat.json:ro
     networks:
       default:
         aliases:
@@ -47,62 +47,62 @@ services:
 
   api:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   events:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   autumn:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   january:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   gifbox:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   crond:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   pushd:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   voice-ingress:
     env_file:
-      - /home/colucci/stoat/config/secrets.env
+      - /home/shark/stoat/config/secrets.env
     volumes:
       - *revolt-toml
 
   livekit:
     volumes:
       - type: bind
-        source: /home/colucci/stoat/config/livekit.yml
+        source: /home/shark/stoat/config/livekit.yml
         target: /etc/livekit.yml
         read_only: true
 
   web:
     env_file:
-      - /home/colucci/stoat/config/.env.web
+      - /home/shark/stoat/config/.env.web
 
 networks:
   traefik:
