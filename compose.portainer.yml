@@ -1,10 +1,13 @@
-# Arquivo ÚNICO para o Portainer (Compose path: compose.portainer.yml).
+# Portainer → Repository → Compose path: compose.portainer.yml
 #
-# env_file NÃO pode ser path absoluto do host — o Portainer resolve paths
-# dentro do container dele. Use stack.env = variáveis da UI do Portainer
-# (cole o conteúdo de secrets.env + .env.web).
+# Via Git, a UI do Portainer NÃO cria stack.env para env_file.
+# As Environment variables da UI só fazem substituição ${VAR}.
+# Por isso os secrets entram em `environment:` abaixo.
 #
-# Volumes bind (/home/shark/stoat/...) vão pelo Docker no HOST e funcionam.
+# Na UI: "Load variables from .env file" com um ficheiro que junte
+# secrets.env + .env.web (+ APP_DOMAIN / TRAEFIK_*).
+#
+# Volumes /home/shark/stoat/... são resolvidos no Docker HOST.
 
 name: stoat
 
@@ -14,8 +17,23 @@ x-revolt-toml: &revolt-toml
   target: /Revolt.toml
   read_only: true
 
-x-stack-env: &stack-env
-  - stack.env
+# Secrets (secrets.env) + web ( .env.web ) — valores vêm da UI do Portainer
+x-stoat-secrets: &stoat-secrets
+  REVOLT__PUSHD__VAPID__PRIVATE_KEY: ${REVOLT__PUSHD__VAPID__PRIVATE_KEY}
+  REVOLT__PUSHD__VAPID__PUBLIC_KEY: ${REVOLT__PUSHD__VAPID__PUBLIC_KEY}
+  REVOLT__FILES__ENCRYPTION_KEY: ${REVOLT__FILES__ENCRYPTION_KEY}
+  REVOLT__API__LIVEKIT__NODES__WORLDWIDE__KEY: ${REVOLT__API__LIVEKIT__NODES__WORLDWIDE__KEY}
+  REVOLT__API__LIVEKIT__NODES__WORLDWIDE__SECRET: ${REVOLT__API__LIVEKIT__NODES__WORLDWIDE__SECRET}
+
+x-web-env: &web-env
+  HOSTNAME: ${HOSTNAME}
+  REVOLT_PUBLIC_URL: ${REVOLT_PUBLIC_URL}
+  VITE_API_URL: ${VITE_API_URL}
+  VITE_WS_URL: ${VITE_WS_URL}
+  VITE_MEDIA_URL: ${VITE_MEDIA_URL}
+  VITE_PROXY_URL: ${VITE_PROXY_URL}
+  VITE_GIFBOX_URL: ${VITE_GIFBOX_URL}
+  VITE_CFG_ENABLE_VIDEO: ${VITE_CFG_ENABLE_VIDEO}
 
 services:
   database:
@@ -73,7 +91,8 @@ services:
   caddy:
     image: docker.io/caddy
     restart: always
-    env_file: *stack-env
+    environment:
+      <<: *web-env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /home/shark/stoat/data/caddy-data:/data
@@ -96,7 +115,8 @@ services:
 
   api:
     image: ghcr.io/stoatchat/api:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     depends_on:
       database:
         condition: service_healthy
@@ -110,7 +130,8 @@ services:
 
   events:
     image: ghcr.io/stoatchat/events:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     depends_on:
       database:
         condition: service_healthy
@@ -122,7 +143,8 @@ services:
 
   autumn:
     image: ghcr.io/stoatchat/file-server:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     depends_on:
       database:
         condition: service_healthy
@@ -134,21 +156,24 @@ services:
 
   january:
     image: ghcr.io/stoatchat/proxy:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     volumes:
       - *revolt-toml
     restart: always
 
   gifbox:
     image: ghcr.io/stoatchat/gifbox:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     volumes:
       - *revolt-toml
     restart: always
 
   crond:
     image: ghcr.io/stoatchat/crond:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     depends_on:
       database:
         condition: service_healthy
@@ -160,7 +185,8 @@ services:
 
   pushd:
     image: ghcr.io/stoatchat/pushd:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     depends_on:
       database:
         condition: service_healthy
@@ -174,7 +200,8 @@ services:
 
   voice-ingress:
     image: ghcr.io/stoatchat/voice-ingress:v0.15.1
-    env_file: *stack-env
+    environment:
+      <<: *stoat-secrets
     restart: always
     depends_on:
       database:
@@ -218,7 +245,8 @@ services:
     # for-web v0.14.1
     image: ghcr.io/stoatchat/for-web:0c31cf0
     restart: always
-    env_file: *stack-env
+    environment:
+      <<: *web-env
 
 networks:
   traefik:
