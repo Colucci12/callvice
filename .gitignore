@@ -10,5 +10,7 @@ secrets.env
 secrets.env.old
 stoat.json
 
-compose.override.yml
+# Versionado neste fork (branch home-server) para Traefik/Portainer.
+# O generate_config.sh oficial sobrescreve este arquivo — rode-o só em /tmp no servidor.
+# compose.override.yml
 compose.override.yml.old

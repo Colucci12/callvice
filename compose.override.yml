@@ -1,0 +1,110 @@
+# Homeserver: Traefik + Cloudflare Tunnel (HTTP) e LiveKit com portas no host (UDP/TCP).
+# Configs e dados ficam fora do clone do Portainer: /home/shark/stoat/{config,data}
+# NÃO rode generate_config.sh neste diretório — o script sobrescreve este arquivo.
+
+x-revolt-toml: &revolt-toml
+  type: bind
+  source: /home/shark/stoat/config/Revolt.toml
+  target: /Revolt.toml
+  read_only: true
+
+services:
+  database:
+    volumes:
+      - /home/shark/stoat/data/db:/data/db
+
+  rabbit:
+    volumes:
+      - /home/shark/stoat/data/rabbit:/var/lib/rabbitmq
+
+  minio:
+    volumes:
+      - /home/shark/stoat/data/minio:/data
+
+  caddy:
+    ports: !reset []
+    env_file:
+      - /home/shark/stoat/config/.env.web
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/shark/stoat/data/caddy-data:/data
+      - /home/shark/stoat/data/caddy-config:/config
+      - /home/shark/stoat/config/stoat.json:/stoat.json:ro
+    networks:
+      default:
+        aliases:
+          - "${STOAT_DOMAIN:-caddy}"
+      traefik: {}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.callvice.rule=Host(`${APP_DOMAIN:-callvice.zvcore.com}`)
+      - traefik.http.routers.callvice.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.callvice.tls=true
+      - traefik.http.routers.callvice.tls.certresolver=leresolver
+      - traefik.http.routers.callvice.service=callvice
+      - traefik.http.services.callvice.loadbalancer.server.port=80
+
+  api:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  events:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  autumn:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  january:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  gifbox:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  crond:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  pushd:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  voice-ingress:
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+
+  livekit:
+    volumes:
+      - type: bind
+        source: /home/shark/stoat/config/livekit.yml
+        target: /etc/livekit.yml
+        read_only: true
+
+  web:
+    env_file:
+      - /home/shark/stoat/config/.env.web
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

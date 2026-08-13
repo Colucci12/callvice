@@ -1,0 +1,6 @@
+# Entry point para o Portainer (Repository stack).
+# O Portainer frequentemente não mescla compose.override.yml sozinho;
+# este arquivo inclui o oficial + o nosso override Traefik/homeserver.
+include:
+  - path: compose.yml
+  - path: compose.override.yml
