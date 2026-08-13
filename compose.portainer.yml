@@ -1,9 +1,10 @@
 # Arquivo ÚNICO para o Portainer (Compose path: compose.portainer.yml).
-# Gerado a partir do compose.yml oficial + customizações do homeserver.
-# Ao atualizar o upstream: sincroniza compose.yml e reaplica Traefik/paths aqui.
 #
-# Configs: /home/shark/stoat/config
-# Dados:   /home/shark/stoat/data
+# env_file NÃO pode ser path absoluto do host — o Portainer resolve paths
+# dentro do container dele. Use stack.env = variáveis da UI do Portainer
+# (cole o conteúdo de secrets.env + .env.web).
+#
+# Volumes bind (/home/shark/stoat/...) vão pelo Docker no HOST e funcionam.
 
 name: stoat
 
@@ -12,6 +13,9 @@ x-revolt-toml: &revolt-toml
   source: /home/shark/stoat/config/Revolt.toml
   target: /Revolt.toml
   read_only: true
+
+x-stack-env: &stack-env
+  - stack.env
 
 services:
   database:
@@ -69,8 +73,7 @@ services:
   caddy:
     image: docker.io/caddy
     restart: always
-    env_file:
-      - /home/shark/stoat/config/.env.web
+    env_file: *stack-env
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - /home/shark/stoat/data/caddy-data:/data
@@ -93,8 +96,7 @@ services:
 
   api:
     image: ghcr.io/stoatchat/api:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     depends_on:
       database:
         condition: service_healthy
@@ -108,8 +110,7 @@ services:
 
   events:
     image: ghcr.io/stoatchat/events:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     depends_on:
       database:
         condition: service_healthy
@@ -121,8 +122,7 @@ services:
 
   autumn:
     image: ghcr.io/stoatchat/file-server:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     depends_on:
       database:
         condition: service_healthy
@@ -134,24 +134,21 @@ services:
 
   january:
     image: ghcr.io/stoatchat/proxy:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     volumes:
       - *revolt-toml
     restart: always
 
   gifbox:
     image: ghcr.io/stoatchat/gifbox:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     volumes:
       - *revolt-toml
     restart: always
 
   crond:
     image: ghcr.io/stoatchat/crond:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     depends_on:
       database:
         condition: service_healthy
@@ -163,8 +160,7 @@ services:
 
   pushd:
     image: ghcr.io/stoatchat/pushd:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     depends_on:
       database:
         condition: service_healthy
@@ -178,8 +174,7 @@ services:
 
   voice-ingress:
     image: ghcr.io/stoatchat/voice-ingress:v0.15.1
-    env_file:
-      - /home/shark/stoat/config/secrets.env
+    env_file: *stack-env
     restart: always
     depends_on:
       database:
@@ -223,8 +218,7 @@ services:
     # for-web v0.14.1
     image: ghcr.io/stoatchat/for-web:0c31cf0
     restart: always
-    env_file:
-      - /home/shark/stoat/config/.env.web
+    env_file: *stack-env
 
 networks:
   traefik:
