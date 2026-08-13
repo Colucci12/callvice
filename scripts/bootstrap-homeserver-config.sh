@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rode NO HOMESERVER (SSH), uma vez, para gerar configs em /home/shark/stoat/config.
+# Rode NO HOMESERVER (SSH), uma vez, para gerar configs em /home/colucci/stoat/config.
 # Uso: bash scripts/bootstrap-homeserver-config.sh
 # Ou, sem clonar o fork: curl -fsSL <raw-url> | bash
 #
@@ -9,8 +9,8 @@
 set -euo pipefail
 
 DOMAIN="${STOAT_DOMAIN:-callvice.zvcore.com}"
-CONFIG_DIR="${STOAT_CONFIG_DIR:-/home/shark/stoat/config}"
-DATA_DIR="${STOAT_DATA_DIR:-/home/shark/stoat/data}"
+CONFIG_DIR="${STOAT_CONFIG_DIR:-/home/colucci/stoat/config}"
+DATA_DIR="${STOAT_DATA_DIR:-/home/colucci/stoat/data}"
 TMP_DIR="${TMPDIR:-/tmp}/stoat-config-gen-$$"
 
 echo "==> Criando ${CONFIG_DIR} e ${DATA_DIR}"
