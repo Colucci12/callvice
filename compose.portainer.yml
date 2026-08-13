@@ -1,0 +1,232 @@
+# Arquivo ÚNICO para o Portainer (Compose path: compose.portainer.yml).
+# Gerado a partir do compose.yml oficial + customizações do homeserver.
+# Ao atualizar o upstream: sincroniza compose.yml e reaplica Traefik/paths aqui.
+#
+# Configs: /home/shark/stoat/config
+# Dados:   /home/shark/stoat/data
+
+name: stoat
+
+x-revolt-toml: &revolt-toml
+  type: bind
+  source: /home/shark/stoat/config/Revolt.toml
+  target: /Revolt.toml
+  read_only: true
+
+services:
+  database:
+    image: docker.io/mongo
+    restart: always
+    volumes:
+      - /home/shark/stoat/data/db:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: valkey/valkey:9-alpine
+    restart: always
+
+  rabbit:
+    image: docker.io/rabbitmq:4
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    volumes:
+      - /home/shark/stoat/data/rabbit:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  minio:
+    image: docker.io/minio/minio
+    command: server /data
+    volumes:
+      - /home/shark/stoat/data/minio:/data
+    environment:
+      MINIO_ROOT_USER: minioautumn
+      MINIO_ROOT_PASSWORD: minioautumn
+      MINIO_DOMAIN: minio
+    networks:
+      default:
+        aliases:
+          - revolt-uploads.minio
+          - attachments.minio
+          - avatars.minio
+          - backgrounds.minio
+          - icons.minio
+          - banners.minio
+          - emojis.minio
+    restart: always
+
+  caddy:
+    image: docker.io/caddy
+    restart: always
+    env_file:
+      - /home/shark/stoat/config/.env.web
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/shark/stoat/data/caddy-data:/data
+      - /home/shark/stoat/data/caddy-config:/config
+      - /home/shark/stoat/config/stoat.json:/stoat.json:ro
+    networks:
+      default:
+        aliases:
+          - "${STOAT_DOMAIN:-caddy}"
+      traefik: {}
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${TRAEFIK_NETWORK:-traefik}
+      - traefik.http.routers.callvice.rule=Host(`${APP_DOMAIN:-callvice.zvcore.com}`)
+      - traefik.http.routers.callvice.entrypoints=${TRAEFIK_ENTRYPOINT:-websecure}
+      - traefik.http.routers.callvice.tls=true
+      - traefik.http.routers.callvice.tls.certresolver=leresolver
+      - traefik.http.routers.callvice.service=callvice
+      - traefik.http.services.callvice.loadbalancer.server.port=80
+
+  api:
+    image: ghcr.io/stoatchat/api:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbit:
+        condition: service_healthy
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  events:
+    image: ghcr.io/stoatchat/events:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  autumn:
+    image: ghcr.io/stoatchat/file-server:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    depends_on:
+      database:
+        condition: service_healthy
+      createbuckets:
+        condition: service_started
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  january:
+    image: ghcr.io/stoatchat/proxy:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  gifbox:
+    image: ghcr.io/stoatchat/gifbox:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  crond:
+    image: ghcr.io/stoatchat/crond:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    depends_on:
+      database:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  pushd:
+    image: ghcr.io/stoatchat/pushd:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbit:
+        condition: service_healthy
+    volumes:
+      - *revolt-toml
+    restart: always
+
+  voice-ingress:
+    image: ghcr.io/stoatchat/voice-ingress:v0.15.1
+    env_file:
+      - /home/shark/stoat/config/secrets.env
+    restart: always
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbit:
+        condition: service_healthy
+    volumes:
+      - *revolt-toml
+
+  livekit:
+    image: ghcr.io/stoatchat/livekit-server:v1.9.13
+    depends_on:
+      redis:
+        condition: service_started
+    command: --config /etc/livekit.yml
+    ports:
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    restart: always
+    volumes:
+      - type: bind
+        source: /home/shark/stoat/config/livekit.yml
+        target: /etc/livekit.yml
+        read_only: true
+
+  createbuckets:
+    image: docker.io/minio/mc
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      while ! /usr/bin/mc ready minio; do
+        /usr/bin/mc alias set minio http://minio:9000 minioautumn minioautumn;
+        echo 'Waiting minio...' && sleep 1;
+      done;
+      /usr/bin/mc mb minio/revolt-uploads;
+      exit 0;
+      "
+
+  web:
+    # for-web v0.14.1
+    image: ghcr.io/stoatchat/for-web:0c31cf0
+    restart: always
+    env_file:
+      - /home/shark/stoat/config/.env.web
+
+networks:
+  traefik:
+    external: true
+    name: ${TRAEFIK_NETWORK:-traefik}

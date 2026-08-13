@@ -1,9 +1,2 @@
-# NÃO use este arquivo no Portainer.
-#
-# Compose `include:` NÃO mescla serviços com o mesmo nome (ex.: livekit) —
-# gera: "services.livekit conflicts with imported resource".
-#
-# No Portainer → Compose path (dois arquivos separados por dois-pontos):
-#   compose.yml:compose.override.yml
-#
-# Isso equivale a: docker compose -f compose.yml -f compose.override.yml up
+# DEPRECATED — não use no Portainer.
+# Use Compose path: compose.portainer.yml
