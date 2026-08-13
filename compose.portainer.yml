@@ -94,7 +94,7 @@ services:
     environment:
       <<: *web-env
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - /home/shark/stoat/config/Caddyfile:/etc/caddy/Caddyfile:ro
       - /home/shark/stoat/data/caddy-data:/data
       - /home/shark/stoat/data/caddy-config:/config
       - /home/shark/stoat/config/stoat.json:/stoat.json:ro
